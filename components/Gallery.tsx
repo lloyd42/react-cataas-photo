@@ -11,6 +11,7 @@ import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 
 import Image from "./Image";
+import { useTagStore } from "@/store";
 
 const InfiniteScroll = dynamic(() => import("react-infinite-scroll-component"));
 const Masonry = dynamic(() => import("react-masonry-css"));
@@ -56,24 +57,34 @@ export default function Gallery() {
 
   const [index, setIndex] = useState(-1);
 
+  const tags = useTagStore((state) => state.tags);
+
   const fetchImages = () => {
-    return fetch(`https://cataas.com/api/cats?skip=${page}&limit=20`).then(
-      async (response) => {
-        const data = (await response.json()) as CatInfo[];
-        const images = data.map((cat) => ({
-          id: cat._id,
-          src: "https://cataas.com/cat/" + cat._id,
-          tags: cat.tags,
-        }));
-        setImages((prevImages) => [...prevImages, ...images]);
-        setPage((prevPage) => prevPage + 1);
-      }
-    );
+    return fetch(
+      `https://cataas.com/api/cats?${
+        tags.length > 0 ? "tags=" + tags.join(",") + "&" : ""
+      }skip=${page}&limit=20`
+    ).then(async (response) => {
+      const data = (await response.json()) as CatInfo[];
+      const images = data.map((cat) => ({
+        id: cat._id,
+        src: "https://cataas.com/cat/" + cat._id,
+        tags: cat.tags,
+      }));
+      setImages((prevImages) => [...prevImages, ...images]);
+      setPage((prevPage) => prevPage + 1);
+    });
   };
 
   useEffect(() => {
     fetchImages();
   }, []);
+
+  useEffect(() => {
+    setImages([]);
+    setPage(1);
+    fetchImages();
+  }, [tags]);
 
   return (
     <InfiniteScroll
@@ -96,26 +107,30 @@ export default function Gallery() {
         className="my-masonry-grid"
         columnClassName="my-masonry-grid_column"
       >
-        {images.map((image, index) => {
-          return (
-            <div
-              className="flex flex-col rounded-md overflow-hidden"
-              key={image.id + index}
-            >
-              <div className="w-full overflow-hidden flex-1">
-                <Image
-                  src={image.src}
-                  alt={image.tags.join(";")}
-                  className="cursor-pointer origin-center object-cover transition ease delay-150 hover:scale-[1.1]"
-                  onClick={() => setIndex(index)}
-                />
+        {images.length > 0 ? (
+          images.map((image, index) => {
+            return (
+              <div
+                className="flex flex-col rounded-md overflow-hidden"
+                key={image.id + index}
+              >
+                <div className="w-full overflow-hidden flex-1">
+                  <Image
+                    src={image.src}
+                    alt={image.tags.join(";")}
+                    className="cursor-pointer origin-center object-cover transition ease delay-150 hover:scale-[1.1]"
+                    onClick={() => setIndex(index)}
+                  />
+                </div>
+                <p className="bg-slate-800 p-2 flex justify-center items-center">
+                  {image.tags.join("; ")}
+                </p>
               </div>
-              <p className="bg-slate-800 p-2 flex justify-center items-center">
-                {image.tags.join("; ")}
-              </p>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div>No cat.</div>
+        )}
       </Masonry>
     </InfiniteScroll>
   );

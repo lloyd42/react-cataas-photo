@@ -1,3 +1,4 @@
+"use client";
 import React, { CSSProperties, MouseEventHandler, useState } from "react";
 
 const Image = ({
